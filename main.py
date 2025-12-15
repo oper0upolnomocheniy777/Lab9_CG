@@ -7,10 +7,10 @@ import pygame
 import numpy as np
 from point import Point
 from camera import Camera
-from model_loader import Model3D, load_obj, create_cube
+from model_loader import Model3D, load_obj, create_cube_with_texture, create_cube
 from renderer import Renderer
 from ui import UI
-from lighting import Light, LambertShader, GouraudShader
+from lighting import Light, LambertShader, GouraudShader, PhongShader
 
 def create_transformation_matrices(angle_x, angle_y, angle_z, scale_factor=1.0):
     """Создает матрицы преобразования модели"""
@@ -56,7 +56,7 @@ def load_all_models():
     models = {}
     
     # Загружаем чайник
-    teapot = load_obj("utah_teapot_lowpy.obj")
+    teapot = load_obj("utah_teapot_lowpoly.obj")
     if teapot:
         models["Чайник"] = teapot
     
@@ -70,8 +70,11 @@ def load_all_models():
     if sphere:
         models["Сфера"] = sphere
     
-    # Создаем встроенный куб
-    models["Куб (встр.)"] = create_cube()
+    # Создаем встроенный куб с текстурой
+    models["Куб (текстурный)"] = create_cube_with_texture()
+    
+    # Создаем встроенный куб без текстуры
+    models["Куб (простой)"] = create_cube()
     
     return models
 
@@ -80,7 +83,7 @@ def main():
     pygame.init()
     WIDTH, HEIGHT = 1024, 768
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("3D Renderer - Advanced OBJ Viewer")
+    pygame.display.set_caption("3D Renderer - Phong Shading & Texturing")
     
     # Создаем компоненты
     camera = Camera(
@@ -113,23 +116,29 @@ def main():
         'angle_z': 0,
         'auto_rotate': True,
         'rotate_speed': 0.02,
-        'show_wireframe': True,
+        'show_wireframe': False,
         'show_filled': True,
         'backface_culling': True,
         'show_normals': False,
         'notification': None,
         'notification_time': 0,
+        'shading_mode': 'gouraud',  # gouraud, phong, flat
+        'texture_enabled': False,
+        'material_color_idx': 0,
+        'show_light_controls': True,
     }
     
     # Сохраняем оригинальные вершины текущей модели
     if state['current_model']:
         state['original_vertices'] = [
-            Point(v.x, v.y, v.z) for v in state['current_model'].vertices
+            Point(v.x, v.y, v.z, v.normal_x, v.normal_y, v.normal_z, 
+                  getattr(v, 'color', None), 
+                  getattr(v, 'tex_u', 0), 
+                  getattr(v, 'tex_v', 0)) 
+            for v in state['current_model'].vertices
         ]
     
     # Состояние нажатых клавиш
-        # Состояние нажатых клавиш
-        # Состояние нажатых клавиш (добавить перед while running)
     keys_pressed = {
         pygame.K_x: False,  # Вращение по X
         pygame.K_y: False,  # Вращение по Y
@@ -140,7 +149,7 @@ def main():
         pygame.K_MINUS: False, # Уменьшить скорость
     }
     
-        # Основные параметры
+    # Основные параметры
     clock = pygame.time.Clock()
     running = True
     
@@ -176,11 +185,20 @@ def main():
                         selected_name = model_names[state['selected_model_idx']]
                         state['current_model_name'] = selected_name
                         state['current_model'] = all_models[selected_name]
+                        
+                        # Сохраняем оригинальные вершины
                         state['original_vertices'] = [
-                            Point(v.x, v.y, v.z) for v in state['current_model'].vertices
+                            Point(v.x, v.y, v.z, v.normal_x, v.normal_y, v.normal_z,
+                                  getattr(v, 'color', None),
+                                  getattr(v, 'tex_u', 0),
+                                  getattr(v, 'tex_v', 0))
+                            for v in state['current_model'].vertices
                         ]
+                        
+                        # Сброс параметров
                         state['angle_x'] = state['angle_y'] = state['angle_z'] = 0
                         camera.reset()
+                        state['texture_enabled'] = False  # Выключить текстурирование при смене модели
                         state['in_model_menu'] = False
                         state['notification'] = f"Загружена модель: {selected_name}"
                         state['notification_time'] = 2.0
@@ -214,74 +232,140 @@ def main():
                     
                     elif event.key == pygame.K_c:
                         renderer.next_color()
-                        state['notification'] = f"Цвет: {renderer.get_current_color_name()}"
+                        state['material_color_idx'] = renderer.current_color_idx
+                        state['notification'] = f"Цвет материала: {renderer.get_current_color_name()}"
                         state['notification_time'] = 1.0
                     
-                    elif event.key == pygame.K_g:  # Переключение режима шейдинга
-                        shading_mode = renderer.toggle_shading_mode()
-                        state['notification'] = f"Режим шейдинга: {shading_mode}"
+                    elif event.key == pygame.K_p:  # Переключение режима шейдинга
+                        shading_modes = ['flat', 'gouraud', 'phong']
+                        current_idx = shading_modes.index(state['shading_mode'])
+                        state['shading_mode'] = shading_modes[(current_idx + 1) % len(shading_modes)]
+                        
+                        # Применяем режим к рендереру
+                        if state['shading_mode'] == 'phong':
+                            renderer.use_phong = True
+                            renderer.use_gouraud = False
+                        elif state['shading_mode'] == 'gouraud':
+                            renderer.use_phong = False
+                            renderer.use_gouraud = True
+                        else:  # flat
+                            renderer.use_phong = False
+                            renderer.use_gouraud = False
+                        
+                        state['notification'] = f"Режим шейдинга: {state['shading_mode'].upper()}"
+                        state['notification_time'] = 1.0
+                    
+                    elif event.key == pygame.K_t:  # Включение/выключение текстурирования
+                        # Проверяем, есть ли у модели текстурные координаты
+                        if state['current_model'] and hasattr(state['current_model'], 'tex_coords'):
+                            if state['current_model'].tex_coords and len(state['current_model'].tex_coords) > 0:
+                                state['texture_enabled'] = not state['texture_enabled']
+                                state['notification'] = f"Текстурирование: {'ВКЛ' if state['texture_enabled'] else 'ВЫКЛ'}"
+                            else:
+                                state['notification'] = "У этой модели нет текстурных координат"
+                        else:
+                            state['notification'] = "Текстурирование не поддерживается"
                         state['notification_time'] = 1.0
 
                     elif event.key == pygame.K_l:  # Показать/скрыть информацию об освещении
                         renderer.show_light_info = not renderer.show_light_info
+                        state['show_light_controls'] = renderer.show_light_info
                         state['notification'] = f"Инфо освещения: {'ВКЛ' if renderer.show_light_info else 'ВЫКЛ'}"
                         state['notification_time'] = 1.0
 
                     elif event.key == pygame.K_i:  # Увеличить интенсивность света
                         renderer.light.intensity = min(2.0, renderer.light.intensity + 0.1)
+                        renderer.phong_shader.light.intensity = renderer.light.intensity
                         state['notification'] = f"Интенсивность света: {renderer.light.intensity:.1f}"
                         state['notification_time'] = 0.5
 
                     elif event.key == pygame.K_k:  # Уменьшить интенсивность света
                         renderer.light.intensity = max(0.1, renderer.light.intensity - 0.1)
+                        renderer.phong_shader.light.intensity = renderer.light.intensity
                         state['notification'] = f"Интенсивность света: {renderer.light.intensity:.1f}"
                         state['notification_time'] = 0.5
 
                     elif event.key == pygame.K_o:  # Увеличить ambient
                         renderer.lambert_shader.ambient_intensity = min(1.0, renderer.lambert_shader.ambient_intensity + 0.05)
+                        renderer.phong_shader.ambient_intensity = renderer.lambert_shader.ambient_intensity
                         state['notification'] = f"Ambient освещение: {renderer.lambert_shader.ambient_intensity:.2f}"
                         state['notification_time'] = 0.5
 
-                    elif event.key == pygame.K_p:  # Уменьшить ambient
+                    elif event.key == pygame.K_u:  # Уменьшить ambient
                         renderer.lambert_shader.ambient_intensity = max(0.0, renderer.lambert_shader.ambient_intensity - 0.05)
+                        renderer.phong_shader.ambient_intensity = renderer.lambert_shader.ambient_intensity
                         state['notification'] = f"Ambient освещение: {renderer.lambert_shader.ambient_intensity:.2f}"
                         state['notification_time'] = 0.5
                     
                     elif event.key == pygame.K_h:  # Управление светом по X
                         if event.mod & pygame.KMOD_SHIFT:  # Shift+H
                             renderer.light.position[0] -= 0.1
+                            renderer.phong_shader.light.position[0] = renderer.light.position[0]
                             state['notification'] = f"Свет X: {renderer.light.position[0]:.1f}"
-                            state['notification_time'] = 0.5
                         else:  # Просто H
                             renderer.light.position[0] += 0.1
+                            renderer.phong_shader.light.position[0] = renderer.light.position[0]
                             state['notification'] = f"Свет X: {renderer.light.position[0]:.1f}"
-                            state['notification_time'] = 0.5
+                        state['notification_time'] = 0.5
                     
                     elif event.key == pygame.K_j:  # Управление светом по Y
                         if event.mod & pygame.KMOD_SHIFT:  # Shift+J
                             renderer.light.position[1] -= 0.1
+                            renderer.phong_shader.light.position[1] = renderer.light.position[1]
                             state['notification'] = f"Свет Y: {renderer.light.position[1]:.1f}"
-                            state['notification_time'] = 0.5
                         else:  # Просто J
                             renderer.light.position[1] += 0.1
+                            renderer.phong_shader.light.position[1] = renderer.light.position[1]
                             state['notification'] = f"Свет Y: {renderer.light.position[1]:.1f}"
-                            state['notification_time'] = 0.5
+                        state['notification_time'] = 0.5
                     
-                    elif event.key == pygame.K_u:  # Управление светом по Z
-                        if event.mod & pygame.KMOD_SHIFT:  # Shift+U
+                    elif event.key == pygame.K_y:  # Управление светом по Z (используем Y для управления светом по Z)
+                        if event.mod & pygame.KMOD_SHIFT:  # Shift+Y
                             renderer.light.position[2] -= 0.1
+                            renderer.phong_shader.light.position[2] = renderer.light.position[2]
                             state['notification'] = f"Свет Z: {renderer.light.position[2]:.1f}"
-                            state['notification_time'] = 0.5
-                        else:  # Просто U
+                        else:  # Просто Y
                             renderer.light.position[2] += 0.1
+                            renderer.phong_shader.light.position[2] = renderer.light.position[2]
                             state['notification'] = f"Свет Z: {renderer.light.position[2]:.1f}"
-                            state['notification_time'] = 0.5
+                        state['notification_time'] = 0.5
+                        keys_pressed[pygame.K_y] = False  # Отключаем вращение по Y
                     
                     elif event.key == pygame.K_r:
+                        # Сброс вращения и камеры
                         state['angle_x'] = state['angle_y'] = state['angle_z'] = 0
                         camera.reset()
-                        state['notification'] = "Вращение и масштаб сброшены"
+                        
+                        # Сброс освещения
+                        renderer.light.position = [3, 3, 3]
+                        renderer.phong_shader.light.position = renderer.light.position.copy()
+                        renderer.light.intensity = 0.8
+                        renderer.phong_shader.light.intensity = renderer.light.intensity
+                        renderer.lambert_shader.ambient_intensity = 0.3
+                        renderer.phong_shader.ambient_intensity = 0.3
+                        renderer.phong_shader.specular_intensity = 0.5
+                        renderer.phong_shader.shininess = 32
+                        
+                        state['notification'] = "Все настройки сброшены"
                         state['notification_time'] = 1.0
+                    
+                    elif event.key == pygame.K_s:  # Управление параметрами Фонга
+                        if event.mod & pygame.KMOD_SHIFT:  # Shift+S - уменьшить бликовость
+                            renderer.phong_shader.shininess = max(1, renderer.phong_shader.shininess - 4)
+                            state['notification'] = f"Бликовость: {renderer.phong_shader.shininess}"
+                        else:  # S - увеличить бликовость
+                            renderer.phong_shader.shininess = min(256, renderer.phong_shader.shininess + 4)
+                            state['notification'] = f"Бликовость: {renderer.phong_shader.shininess}"
+                        state['notification_time'] = 0.5
+                    
+                    elif event.key == pygame.K_d:  # Управление specular интенсивностью
+                        if event.mod & pygame.KMOD_SHIFT:  # Shift+D - уменьшить specular
+                            renderer.phong_shader.specular_intensity = max(0, renderer.phong_shader.specular_intensity - 0.1)
+                            state['notification'] = f"Specular: {renderer.phong_shader.specular_intensity:.1f}"
+                        else:  # D - увеличить specular
+                            renderer.phong_shader.specular_intensity = min(2.0, renderer.phong_shader.specular_intensity + 0.1)
+                            state['notification'] = f"Specular: {renderer.phong_shader.specular_intensity:.1f}"
+                        state['notification_time'] = 0.5
                     
                     elif event.key in keys_pressed:
                         keys_pressed[event.key] = True
@@ -298,7 +382,7 @@ def main():
             if keys_pressed[pygame.K_x]:
                 camera.rotate('x', rotation_amount)
             
-            if keys_pressed[pygame.K_y]:
+            if keys_pressed[pygame.K_y] and not pygame.key.get_mods() & pygame.KMOD_SHIFT:
                 camera.rotate('y', rotation_amount)
             
             if keys_pressed[pygame.K_z]:
@@ -354,9 +438,23 @@ def main():
                 # Восстанавливаем и преобразуем вершины
                 for i, vertex in enumerate(state['current_model'].vertices):
                     orig = state['original_vertices'][i]
+                    
+                    # Восстанавливаем оригинальные значения
                     vertex.x = orig.x
                     vertex.y = orig.y
                     vertex.z = orig.z
+                    vertex.normal_x = orig.normal_x
+                    vertex.normal_y = orig.normal_y
+                    vertex.normal_z = orig.normal_z
+                    vertex.color = orig.color
+                    
+                    # Сохраняем текстурные координаты
+                    if hasattr(orig, 'tex_u'):
+                        vertex.tex_u = orig.tex_u
+                    if hasattr(orig, 'tex_v'):
+                        vertex.tex_v = orig.tex_v
+                    
+                    # Применяем преобразование
                     vertex.transform(transform_matrix)
                 
                 # Пересчитываем нормали после преобразования
@@ -364,6 +462,9 @@ def main():
             
             # Рендеринг модели
             if state['current_model']:
+                # Устанавливаем позицию камеры для Phong шейдера
+                renderer.phong_shader.set_view_pos(camera.position)
+                
                 visible, hidden = renderer.render(
                     screen, 
                     state['current_model'], 
@@ -371,7 +472,8 @@ def main():
                     show_wireframe=state['show_wireframe'],
                     show_filled=state['show_filled'],
                     backface_culling=state['backface_culling'],
-                    show_normals=state['show_normals']
+                    show_normals=state['show_normals'],
+                    texture_enabled=state['texture_enabled']
                 )
                 
                 total_faces = visible + hidden
@@ -382,6 +484,8 @@ def main():
                     'name': state['current_model_name'],
                     'vertices': len(state['current_model'].vertices),
                     'faces': len(state['current_model'].faces),
+                    'has_texture': hasattr(state['current_model'], 'tex_coords') and 
+                                   len(state['current_model'].tex_coords) > 0,
                 }
                 
                 stats = {
@@ -390,6 +494,15 @@ def main():
                     'visible_percent': visible_percent,
                 }
                 
+                # Текущие настройки
+                current_shading = state['shading_mode'].upper()
+                if current_shading == 'PHONG':
+                    shading_info = f"Phong (P)"
+                elif current_shading == 'GOURAUD':
+                    shading_info = f"Gouraud (P)"
+                else:
+                    shading_info = f"Flat (P)"
+                
                 settings = {
                     'auto_rotate': state['auto_rotate'],
                     'wireframe': state['show_wireframe'],
@@ -397,9 +510,12 @@ def main():
                     'culling': state['backface_culling'],
                     'normals': state['show_normals'],
                     'color': renderer.get_current_color_name(),
-                    'gouraud': renderer.use_gouraud,
+                    'shading_mode': shading_info,
+                    'texture': 'ВКЛ' if state['texture_enabled'] else 'ВЫКЛ',
                     'light_intensity': renderer.light.intensity,
                     'ambient': renderer.lambert_shader.ambient_intensity,
+                    'specular': renderer.phong_shader.specular_intensity,
+                    'shininess': renderer.phong_shader.shininess,
                     'light_x': renderer.light.position[0],
                     'light_y': renderer.light.position[1],
                     'light_z': renderer.light.position[2],

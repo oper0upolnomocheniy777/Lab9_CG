@@ -1,0 +1,208 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\main.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:main.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\texture_renderer.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:texture_renderer.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\renderer.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:renderer.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\lighting.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:lighting.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\ui.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ui.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\point.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:point.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\model_loader.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:model_loader.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\__init__.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:__init__.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\utils.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:utils.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\geometry.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:geometry.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\camera.py||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:camera.py||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{e1b7d1f8-9b3c-49b1-8f4f-bfc63a88835d}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "lighting.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\lighting.py",
+              "RelativeDocumentMoniker": "lighting.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\lighting.py",
+              "RelativeToolTip": "lighting.py",
+              "ViewState": "AgIAABgAAAAAAAAAAAAQwCcAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:30:41.405Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\main.py",
+              "RelativeDocumentMoniker": "main.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\main.py",
+              "RelativeToolTip": "main.py",
+              "ViewState": "AgIAABsAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:31:06.72Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "renderer.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\renderer.py",
+              "RelativeDocumentMoniker": "renderer.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\renderer.py",
+              "RelativeToolTip": "renderer.py",
+              "ViewState": "AgIAALEAAAAAAAAAAAAQwPcAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:32:52.185Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "texture_renderer.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\texture_renderer.py",
+              "RelativeDocumentMoniker": "texture_renderer.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\texture_renderer.py",
+              "RelativeToolTip": "texture_renderer.py",
+              "ViewState": "AgIAAGgAAAAAAAAAAAAQwAcBAAA2AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:53:10.106Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ui.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\ui.py",
+              "RelativeDocumentMoniker": "ui.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\ui.py",
+              "RelativeToolTip": "ui.py",
+              "ViewState": "AgIAAFcAAAAAAAAAAAAwwGUAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:33:49.473Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "point.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\point.py",
+              "RelativeDocumentMoniker": "point.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\point.py",
+              "RelativeToolTip": "point.py",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAQwCoAAABCAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:32:20.031Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "model_loader.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\model_loader.py",
+              "RelativeDocumentMoniker": "model_loader.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\model_loader.py",
+              "RelativeToolTip": "model_loader.py",
+              "ViewState": "AgIAANQAAAAAAAAAAAAQwOkAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:31:45.321Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "utils.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\utils.py",
+              "RelativeDocumentMoniker": "utils.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\utils.py",
+              "RelativeToolTip": "utils.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:34:10.818Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "__init__.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\__init__.py",
+              "RelativeDocumentMoniker": "__init__.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\__init__.py",
+              "RelativeToolTip": "__init__.py",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:34:13.267Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "geometry.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\geometry.py",
+              "RelativeDocumentMoniker": "geometry.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\geometry.py",
+              "RelativeToolTip": "geometry.py",
+              "ViewState": "AgIAAHgAAAAAAAAAAAAAAIQAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:30:27.016Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "camera.py",
+              "DocumentMoniker": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\camera.py",
+              "RelativeDocumentMoniker": "camera.py",
+              "ToolTip": "C:\\Users\\TROLL2\\Documents\\GitHub\\Lab9_CG\\camera.py",
+              "RelativeToolTip": "camera.py",
+              "ViewState": "AgIAAGAAAAAAAAAAAAAAAGcAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.002457|",
+              "WhenOpened": "2025-12-15T18:29:41.062Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

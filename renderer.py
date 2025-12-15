@@ -1,7 +1,8 @@
 # renderer.py
 import numpy as np
 import pygame
-from lighting import Light, LambertShader, GouraudShader
+from lighting import Light, LambertShader, GouraudShader, PhongShader
+from texture_renderer import TexturedRenderer
 
 class Renderer:
     def __init__(self, width, height):
@@ -25,10 +26,22 @@ class Renderer:
         self.light = Light(position=[3, 3, 3], color=(1.0, 1.0, 1.0), intensity=0.8)
         self.lambert_shader = LambertShader(self.light, ambient_intensity=0.3)
         self.gouraud_shader = GouraudShader(self.lambert_shader)
+        self.phong_shader = PhongShader(
+            self.light,
+            ambient_intensity=0.3,
+            specular_intensity=0.5,
+            shininess=32
+        )
+        
+        # Текстурирование
+        self.textured_renderer = TexturedRenderer(width, height)
+        self.textured_renderer.set_light(self.light)
         
         # Режимы рендеринга
-        self.use_gouraud = True  # Использовать Гуро шейдинг
+        self.use_gouraud = True
+        self.use_phong = False
         self.show_light_info = True
+        self.texture_enabled = False
         
         # Фон
         self.bg_color = (20, 25, 35)
@@ -45,44 +58,35 @@ class Renderer:
         return (x, y)
     
     def is_face_visible(self, face):
-        """Правильное отсечение нелицевых граней для ортографической проекции"""
-        # Для ортографической проекции проверяем Z-компоненту нормали
-        # Если нормаль смотрит от камеры (в нашем случае камера смотрит по -Z),
-        # то грань видима когда нормаль.z < 0
+        """Отсечение нелицевых граней"""
         return face.normal_z < 0
     
-    def calculate_vertex_colors(self, model, material_color):
-        """Вычисление цветов вершин по модели Ламберта"""
-        vertex_colors = []
-        material_color_rgb = (
-            material_color[0] / 255.0,
-            material_color[1] / 255.0,
-            material_color[2] / 255.0
-        )
-        
-        for vertex in model.vertices:
-            color = self.lambert_shader.calculate_vertex_color(
-                vertex, material_color_rgb
-            )
-            
-            # Преобразование в формат Pygame
-            vertex_color = (
-                int(color[0] * 255),
-                int(color[1] * 255),
-                int(color[2] * 255)
-            )
-            vertex.color = vertex_color
-            vertex_colors.append(vertex_color)
-        
-        return vertex_colors
+    def render_triangle_flat(self, screen, face_points, color):
+        """Рендеринг треугольника с плоским затенением"""
+        pygame.draw.polygon(screen, color, face_points)
     
     def render_triangle_gouraud(self, screen, v0, v1, v2, p0, p1, p2):
         """Рендеринг треугольника с Гуро шейдингом"""
         self.gouraud_shader.shade_triangle(screen, v0, v1, v2, p0, p1, p2)
     
-    def render_triangle_flat(self, screen, face_points, color):
-        """Рендеринг треугольника с плоским затенением"""
-        pygame.draw.polygon(screen, color, face_points)
+    def render_triangle_phong(self, screen, v0, v1, v2, p0, p1, p2, material_color):
+        """Рендеринг треугольника с шейдингом Фонга"""
+        # Устанавливаем позицию камеры для Phong шейдера
+        self.phong_shader.set_view_pos([0, 0, 3])
+        
+        # Рендерим с интерполяцией нормалей
+        self.phong_shader.shade_triangle(
+            screen, v0, v1, v2, p0, p1, p2,
+            (material_color[0]/255.0, material_color[1]/255.0, material_color[2]/255.0)
+        )
+    
+    def render_triangle_textured(self, screen, v0, v1, v2, p0, p1, p2):
+        """Рендеринг текстурированного треугольника"""
+        self.textured_renderer.set_view_pos([0, 0, 3])
+        self.textured_renderer.render_textured_triangle(
+            screen, v0, v1, v2, p0, p1, p2,
+            self.textured_renderer.current_texture
+        )
     
     def next_color(self):
         """Переключение на следующий цвет"""
@@ -99,8 +103,9 @@ class Renderer:
         return "Гуро" if self.use_gouraud else "Плоский"
     
     def render(self, screen, model, camera, show_wireframe=True, 
-               show_filled=True, backface_culling=True, show_normals=False):
-        """Основной метод рендеринга"""
+               show_filled=True, backface_culling=True, show_normals=False,
+               texture_enabled=False):
+        """Основной метод рендеринга с поддержкой текстурирования"""
         screen.fill(self.bg_color)
         
         view_proj_matrix = camera.get_view_projection_matrix()
@@ -110,9 +115,30 @@ class Renderer:
         for vertex in model.vertices:
             projected.append(self.project_point(vertex, view_proj_matrix))
         
-        # Вычисляем цвета вершин по модели Ламберта
+        # Вычисляем цвета вершин
         base_color = self.colors[self.current_color_idx]
-        vertex_colors = self.calculate_vertex_colors(model, base_color)
+        
+        # Создаем список цветов для каждой вершины
+        vertex_colors = []
+        material_color_rgb = (
+            base_color[0] / 255.0,
+            base_color[1] / 255.0,
+            base_color[2] / 255.0
+        )
+        
+        for vertex in model.vertices:
+            if self.use_phong:
+                color = self.phong_shader.calculate_vertex_color(vertex, material_color_rgb, use_phong=True)
+            else:
+                color = self.lambert_shader.calculate_vertex_color(vertex, material_color_rgb)
+            
+            vertex_color = (
+                int(color[0] * 255),
+                int(color[1] * 255),
+                int(color[2] * 255)
+            )
+            vertex.color = vertex_color
+            vertex_colors.append(vertex_color)
         
         visible = 0
         hidden = 0
@@ -142,16 +168,57 @@ class Renderer:
             
             # Заполнение
             if show_filled and is_visible:
-                if self.use_gouraud and len(face_vertices) >= 3:
-                    # Гуро шейдинг для треугольников
+                if texture_enabled and hasattr(face_vertices[0], 'tex_u'):
+                    # Текстурирование
                     if len(face_vertices) == 3:
-                        self.render_triangle_gouraud(
-                            screen, 
+                        self.render_triangle_textured(
+                            screen,
                             face_vertices[0], face_vertices[1], face_vertices[2],
                             face_points[0], face_points[1], face_points[2]
                         )
                     elif len(face_vertices) == 4:
                         # Разбиваем четырехугольник на два треугольника
+                        self.render_triangle_textured(
+                            screen,
+                            face_vertices[0], face_vertices[1], face_vertices[2],
+                            face_points[0], face_points[1], face_points[2]
+                        )
+                        self.render_triangle_textured(
+                            screen,
+                            face_vertices[0], face_vertices[2], face_vertices[3],
+                            face_points[0], face_points[2], face_points[3]
+                        )
+                elif self.use_phong:
+                    # Phong шейдинг
+                    if len(face_vertices) == 3:
+                        self.render_triangle_phong(
+                            screen,
+                            face_vertices[0], face_vertices[1], face_vertices[2],
+                            face_points[0], face_points[1], face_points[2],
+                            base_color
+                        )
+                    elif len(face_vertices) == 4:
+                        self.render_triangle_phong(
+                            screen,
+                            face_vertices[0], face_vertices[1], face_vertices[2],
+                            face_points[0], face_points[1], face_points[2],
+                            base_color
+                        )
+                        self.render_triangle_phong(
+                            screen,
+                            face_vertices[0], face_vertices[2], face_vertices[3],
+                            face_points[0], face_points[2], face_points[3],
+                            base_color
+                        )
+                elif self.use_gouraud:
+                    # Гуро шейдинг
+                    if len(face_vertices) == 3:
+                        self.render_triangle_gouraud(
+                            screen,
+                            face_vertices[0], face_vertices[1], face_vertices[2],
+                            face_points[0], face_points[1], face_points[2]
+                        )
+                    elif len(face_vertices) == 4:
                         self.render_triangle_gouraud(
                             screen,
                             face_vertices[0], face_vertices[1], face_vertices[2],
@@ -175,7 +242,7 @@ class Renderer:
                             sum(c[1] for c in face_vertex_colors) // len(face_vertex_colors),
                             sum(c[2] for c in face_vertex_colors) // len(face_vertex_colors)
                         )
-                        self.render_triangle_flat(screen, face_points, avg_color)
+                        pygame.draw.polygon(screen, avg_color, face_points)
             
             # Каркас
             if show_wireframe:
@@ -189,35 +256,37 @@ class Renderer:
                 
                 scale = 15
                 end_x = center_x + face.normal_x * scale
-                end_y = center_y - face.normal_y * scale  # Отрицательный Y для экранных координат
+                end_y = center_y - face.normal_y * scale
                 
                 pygame.draw.line(screen, (255, 255, 0), 
                                (center_x, center_y), (end_x, end_y), 2)
-                # Кружок в начале нормали
                 pygame.draw.circle(screen, (255, 200, 0), (int(center_x), int(center_y)), 3)
         
-        # Отображение информации об освещении
+        # Отображение информации
         if self.show_light_info:
-            self.draw_light_info(screen)
+            self.draw_light_info(screen, texture_enabled)
         
         return visible, hidden
     
-    def draw_light_info(self, screen):
-        """Отображение информации об освещении"""
+    def draw_light_info(self, screen, texture_enabled):
+        """Отображение информации об освещении и текстурировании"""
         font = pygame.font.Font(None, 24)
         
+        shading_mode = "Phong" if self.use_phong else "Gouraud" if self.use_gouraud else "Flat"
+        
         info_lines = [
-            f"Режим шейдинга: {'Гуро' if self.use_gouraud else 'Плоский'} (G)",
+            f"Шейдинг: {shading_mode} (P)",
+            f"Текстура: {'ВКЛ' if texture_enabled else 'ВЫКЛ'} (T)",
             f"Источник света: ({self.light.position[0]:.1f}, {self.light.position[1]:.1f}, {self.light.position[2]:.1f})",
-            f"Интенсивность: {self.light.intensity:.1f}",
-            f"Ambient: {self.lambert_shader.ambient_intensity:.1f}",
+            f"Интенсивность: {self.light.intensity:.1f} (I/K)",
+            f"Ambient: {self.lambert_shader.ambient_intensity:.2f} (O/P)",
         ]
         
         # Фон для информации
-        info_bg = pygame.Surface((300, 100), pygame.SRCALPHA)
+        info_bg = pygame.Surface((350, 125), pygame.SRCALPHA)
         info_bg.fill((0, 0, 0, 150))
-        screen.blit(info_bg, (10, self.height - 110))
+        screen.blit(info_bg, (10, self.height - 135))
         
         for i, line in enumerate(info_lines):
             text = font.render(line, True, (200, 255, 200))
-            screen.blit(text, (20, self.height - 100 + i * 25))
+            screen.blit(text, (20, self.height - 125 + i * 25))
