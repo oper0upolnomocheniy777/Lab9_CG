@@ -7,7 +7,7 @@ import pygame
 import numpy as np
 from point import Point
 from camera import Camera
-from model_loader import Model3D, load_obj, create_cube
+from model_loader import Model3D, load_obj, create_cube, create_textured_cube, create_textured_pyramid
 from renderer import Renderer
 from ui import UI
 from lighting import Light, LambertShader, GouraudShader
@@ -73,6 +73,10 @@ def load_all_models():
     # Создаем встроенный куб
     models["Куб (встр.)"] = create_cube()
     
+    # Добавляем текстурированные модели
+    models["Куб (текстур.)"] = create_textured_cube()
+    models["Пирамида (текстур.)"] = create_textured_pyramid()
+    
     return models
 
 def main():
@@ -80,7 +84,7 @@ def main():
     pygame.init()
     WIDTH, HEIGHT = 1024, 768
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("3D Renderer - Advanced OBJ Viewer")
+    pygame.display.set_caption("3D Renderer - Advanced OBJ Viewer с текстурированием")
     
     # Создаем компоненты
     camera = Camera(
@@ -128,8 +132,6 @@ def main():
         ]
     
     # Состояние нажатых клавиш
-        # Состояние нажатых клавиш
-        # Состояние нажатых клавиш (добавить перед while running)
     keys_pressed = {
         pygame.K_x: False,  # Вращение по X
         pygame.K_y: False,  # Вращение по Y
@@ -140,7 +142,7 @@ def main():
         pygame.K_MINUS: False, # Уменьшить скорость
     }
     
-        # Основные параметры
+    # Основные параметры
     clock = pygame.time.Clock()
     running = True
     
@@ -283,6 +285,17 @@ def main():
                         state['notification'] = "Вращение и масштаб сброшены"
                         state['notification_time'] = 1.0
                     
+                    # НОВЫЕ КЛАВИШИ ДЛЯ УПРАВЛЕНИЯ ТЕКСТУРОЙ
+                    elif event.key == pygame.K_t:  # Включить/выключить текстуру
+                        texture_status = renderer.toggle_texturing()
+                        state['notification'] = f"Текстура: {texture_status}"
+                        state['notification_time'] = 1.0
+                    
+                    elif event.key == pygame.K_y:  # Сменить тип текстуры
+                        texture_name = renderer.toggle_texture_mode()
+                        state['notification'] = f"Текстура: {texture_name}"
+                        state['notification_time'] = 1.0
+                    
                     elif event.key in keys_pressed:
                         keys_pressed[event.key] = True
             
@@ -390,6 +403,11 @@ def main():
                     'visible_percent': visible_percent,
                 }
                 
+                # Определяем, есть ли у текущей модели текстура
+                has_texture = False
+                if state['current_model']:
+                    has_texture = state['current_model'].has_texture_coords()
+                
                 settings = {
                     'auto_rotate': state['auto_rotate'],
                     'wireframe': state['show_wireframe'],
@@ -403,6 +421,8 @@ def main():
                     'light_x': renderer.light.position[0],
                     'light_y': renderer.light.position[1],
                     'light_z': renderer.light.position[2],
+                    'texture': renderer.use_texture and has_texture,  # Текстура включена И у модели есть текстурные координаты
+                    'has_texture_coords': has_texture,  # Есть ли у модели текстурные координаты
                 }
                 
                 rot_x, rot_y, rot_z = camera.get_rotation_angles_degrees()

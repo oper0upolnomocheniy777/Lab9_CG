@@ -92,11 +92,14 @@ class UI:
             f"Заливка: {'ВКЛ' if settings['filled'] else 'ВЫКЛ'} (F)",
         ]
         
+        # added new info for texture
         settings_col2 = [
             f"Отсечение: {'ВКЛ' if settings['culling'] else 'ВЫКЛ'} (B)",
             f"Нормали: {'ВКЛ' if settings['normals'] else 'ВЫКЛ'} (N)",
             f"Цвет: {settings['color']} (C)",
+            f"Текстура: {'ВКЛ' if settings['texture'] else 'ВЫКЛ'} (T)",  # ДОБАВЛЕНО
         ]
+
         
         settings_col3 = [
             f"Шейдинг: {'Гуро' if settings['gouraud'] else 'Плоский'} (G)",

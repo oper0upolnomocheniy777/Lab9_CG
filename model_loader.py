@@ -3,8 +3,9 @@ import numpy as np
 from point import Point
 
 class Face:
-    def __init__(self, indices):
+    def __init__(self, indices, tex_indices=None):
         self.vertex_indices = indices
+        self.tex_indices = tex_indices if tex_indices else []
         self.normal_x = 0
         self.normal_y = 0
         self.normal_z = 0
@@ -47,12 +48,14 @@ class Face:
         return (normal_x, normal_y, normal_z)
     
     def __repr__(self):
-        return f"Face({self.vertex_indices})"
+        return f"Face({self.vertex_indices}, tex={self.tex_indices})"
 
 class Model3D:
-    def __init__(self, vertices, faces):
+    def __init__(self, vertices, faces, tex_coords=None):
         self.vertices = vertices
         self.faces = faces
+        self.tex_coords = tex_coords if tex_coords else []
+        
         self.calculate_face_normals()
         self.calculate_vertex_normals()  # Добавляем расчет нормалей вершин
     
@@ -106,12 +109,18 @@ class Model3D:
             if i < len(colors):
                 vertex.color = colors[i]
     
+    def has_texture_coords(self):
+        """Проверка, есть ли у модели текстурные координаты"""
+        return len(self.tex_coords) > 0
+    
     def __repr__(self):
-        return f"Model3D(vertices={len(self.vertices)}, faces={len(self.faces)})"
+        has_tex = "с текстурой" if self.has_texture_coords() else "без текстуры"
+        return f"Model3D(vertices={len(self.vertices)}, faces={len(self.faces)}, {has_tex})"
 
 def load_obj(filename):
-    """Загрузка OBJ файла с нормализацией"""
+    """Загрузка OBJ файла с нормализацией и текстурными координатами"""
     vertices = []
+    tex_coords = []  # VT - текстурные координаты
     faces = []
     
     try:
@@ -125,24 +134,43 @@ def load_obj(filename):
                 if not parts:
                     continue
                 
-                if parts[0] == 'v':
+                if parts[0] == 'v':  # Вершины
                     if len(parts) >= 4:
                         x = float(parts[1])
                         y = float(parts[2])
                         z = float(parts[3])
                         vertices.append([x, y, z])
                 
-                elif parts[0] == 'f':
+                elif parts[0] == 'vt':  # Текстурные координаты
+                    if len(parts) >= 3:
+                        u = float(parts[1])
+                        v = float(parts[2])
+                        tex_coords.append([u, v])
+                
+                elif parts[0] == 'f':  # Грани
                     vertex_indices = []
+                    tex_indices = []
+                    
                     for part in parts[1:]:
                         indices = part.split('/')
                         if indices[0]:
                             vertex_idx = int(indices[0]) - 1
                             if 0 <= vertex_idx:
                                 vertex_indices.append(vertex_idx)
+                        
+                        # Текстурные координаты (второй элемент после '/')
+                        if len(indices) > 1 and indices[1]:
+                            tex_idx = int(indices[1]) - 1
+                            if 0 <= tex_idx:
+                                tex_indices.append(tex_idx)
                     
                     if len(vertex_indices) >= 3:
-                        faces.append(vertex_indices)
+                        # Если для этой грани нет текстурных координат, оставляем список пустым
+                        if len(tex_indices) != len(vertex_indices):
+                            tex_indices = []
+                        
+                        face = Face(vertex_indices, tex_indices if tex_indices else None)
+                        faces.append(face)
         
         # Нормализация модели
         if vertices:
@@ -160,11 +188,8 @@ def load_obj(filename):
         # Создаем точки (без нормалей, они вычислятся позже)
         points = [Point(v[0], v[1], v[2]) for v in vertices_array]
         
-        # Создаем грани
-        model_faces = [Face(indices) for indices in faces]
-        
-        model = Model3D(points, model_faces)
-        print(f"✓ Загружено из {filename}: {len(points)} вершин, {len(faces)} граней")
+        model = Model3D(points, faces, tex_coords)
+        print(f"✓ Загружено из {filename}: {len(points)} вершин, {len(faces)} граней, {len(tex_coords)} текстурных координат")
         return model
     
     except Exception as e:
@@ -172,7 +197,7 @@ def load_obj(filename):
         return None
 
 def create_cube():
-    """Создание куба с нормалями"""
+    """Создание куба с нормалями (оригинальная функция - без текстуры)"""
     # Создаем вершины без нормалей (они вычислятся автоматически)
     vertices = [
         Point(-0.5, -0.5, -0.5),
@@ -196,4 +221,82 @@ def create_cube():
     
     model = Model3D(vertices, faces)
     print(f"✓ Создан куб: {len(vertices)} вершин, {len(faces)} граней")
+    return model
+
+def create_textured_cube():
+    """Создание куба с текстурными координатами (дополнительная функция)"""
+    # Вершины куба
+    vertices = [
+        Point(-0.5, -0.5, -0.5),  # 0
+        Point(0.5, -0.5, -0.5),   # 1
+        Point(0.5, 0.5, -0.5),    # 2
+        Point(-0.5, 0.5, -0.5),   # 3
+        Point(-0.5, -0.5, 0.5),   # 4
+        Point(0.5, -0.5, 0.5),    # 5
+        Point(0.5, 0.5, 0.5),     # 6
+        Point(-0.5, 0.5, 0.5),    # 7
+    ]
+    
+    # Текстурные координаты для куба (развертка куба)
+    tex_coords = [
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 0-3: первый квадрат
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 4-7: второй квадрат
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 8-11: третий квадрат
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 12-15: четвертый квадрат
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 16-19: пятый квадрат
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],  # 20-23: шестой квадрат
+    ]
+    
+    # Грани куба с текстурными координатами
+    faces = [
+        # Задняя грань
+        Face([0, 3, 2, 1], [0, 3, 2, 1]),
+        # Передняя грань
+        Face([4, 5, 6, 7], [4, 5, 6, 7]),
+        # Левая грань
+        Face([0, 4, 7, 3], [8, 9, 10, 11]),
+        # Правая грань
+        Face([1, 2, 6, 5], [12, 13, 14, 15]),
+        # Нижняя грань
+        Face([0, 1, 5, 4], [16, 17, 18, 19]),
+        # Верхняя грань
+        Face([2, 3, 7, 6], [20, 21, 22, 23]),
+    ]
+    
+    model = Model3D(vertices, faces, tex_coords)
+    print(f"✓ Создан текстурированный куб: {len(vertices)} вершин, {len(faces)} граней")
+    return model
+
+def create_textured_pyramid():
+    """Создание пирамиды с текстурными координатами (дополнительная функция)"""
+    vertices = [
+        Point(0, 0.5, 0),     # 0 - вершина
+        Point(-0.5, -0.5, -0.5),  # 1
+        Point(0.5, -0.5, -0.5),   # 2
+        Point(0.5, -0.5, 0.5),    # 3
+        Point(-0.5, -0.5, 0.5),   # 4
+    ]
+    
+    # Текстурные координаты
+    tex_coords = [
+        [0.5, 1.0],  # 0 - вершина
+        [0.0, 0.0],  # 1
+        [1.0, 0.0],  # 2
+        [1.0, 0.0],  # 3
+        [0.0, 0.0],  # 4
+        [0.0, 1.0],  # 5 - дополнительная для основания
+        [1.0, 1.0],  # 6 - дополнительная для основания
+    ]
+    
+    # Грани пирамиды
+    faces = [
+        Face([0, 1, 2], [0, 1, 2]),        # Передняя треугольная грань
+        Face([0, 2, 3], [0, 2, 6]),        # Правая треугольная грань
+        Face([0, 3, 4], [0, 6, 5]),        # Задняя треугольная грань
+        Face([0, 4, 1], [0, 5, 1]),        # Левая треугольная грань
+        Face([1, 4, 3, 2], [1, 5, 6, 2]),  # Квадратное основание
+    ]
+    
+    model = Model3D(vertices, faces, tex_coords)
+    print(f"✓ Создана текстурированная пирамида: {len(vertices)} вершин, {len(faces)} граней")
     return model
