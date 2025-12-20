@@ -13,16 +13,8 @@ from ui import UI
 from lighting import Light, LambertShader, GouraudShader
 
 def create_transformation_matrices(angle_x, angle_y, angle_z, scale_factor=1.0):
-    """Создает матрицы преобразования модели"""
-    # Матрица масштабирования
-    scale_matrix = np.array([
-        [scale_factor * 0.6, 0, 0, 0],
-        [0, scale_factor * 0.6, 0, 0],
-        [0, 0, scale_factor * 0.6, 0],
-        [0, 0, 0, 1]
-    ], dtype=float)
-    
-    # Матрицы вращения
+    """Создает матрицу преобразования модели"""
+    # Только вращение, без масштабирования здесь
     c1, s1 = np.cos(angle_x), np.sin(angle_x)
     c2, s2 = np.cos(angle_y), np.sin(angle_y)
     c3, s3 = np.cos(angle_z), np.sin(angle_z)
@@ -48,8 +40,8 @@ def create_transformation_matrices(angle_x, angle_y, angle_z, scale_factor=1.0):
         [0, 0, 0, 1]
     ], dtype=float)
     
-    # Комбинируем преобразования
-    return rotation_z @ rotation_y @ rotation_x @ scale_matrix
+    # Только вращение, масштаб уже в модели
+    return rotation_z @ rotation_y @ rotation_x
 
 def load_all_models():
     """Загрузка всех доступных моделей"""
@@ -212,7 +204,7 @@ def main():
                         state['notification'] = f"Нормали: {'ВКЛ' if state['show_normals'] else 'ВЫКЛ'}"
                         state['notification_time'] = 1.0
                     
-                    elif event.key == pygame.K_c:
+                    elif event.key == pygame.K_c:  # Смена цвета
                         renderer.next_color()
                         state['notification'] = f"Цвет: {renderer.get_current_color_name()}"
                         state['notification_time'] = 1.0
@@ -344,24 +336,24 @@ def main():
         
         else:
             # Применение преобразований к модели
-            if state['current_model'] and state['original_vertices']:
+            if state['current_model']:
                 transform_matrix = create_transformation_matrices(
                     state['angle_x'], 
                     state['angle_y'], 
                     state['angle_z']
                 )
                 
-                # Восстанавливаем и преобразуем вершины
-                for i, vertex in enumerate(state['current_model'].vertices):
+                # Применяем преобразование ко всей модели
+                state['current_model'].apply_transform(transform_matrix)
+                
+            # Восстанавливаем и преобразуем вершины
+            for i, vertex in enumerate(state['current_model'].vertices):
                     orig = state['original_vertices'][i]
                     vertex.x = orig.x
                     vertex.y = orig.y
                     vertex.z = orig.z
                     vertex.transform(transform_matrix)
                 
-                # Пересчитываем нормали после преобразования
-                state['current_model'].recalculate_normals()
-            
             # Рендеринг модели
             if state['current_model']:
                 visible, hidden = renderer.render(
@@ -371,7 +363,7 @@ def main():
                     show_wireframe=state['show_wireframe'],
                     show_filled=state['show_filled'],
                     backface_culling=state['backface_culling'],
-                    show_normals=state['show_normals']
+                    show_normals=state['show_normals']  # Этот параметр теперь поддерживается
                 )
                 
                 total_faces = visible + hidden

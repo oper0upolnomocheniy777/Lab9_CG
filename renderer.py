@@ -27,11 +27,15 @@ class Renderer:
         self.gouraud_shader = GouraudShader(self.lambert_shader)
         
         # Режимы рендеринга
-        self.use_gouraud = True  # Использовать Гуро шейдинг
+        self.use_gouraud = False  # Изначально выключен Гуро шейдинг
         self.show_light_info = True
         
         # Фон
         self.bg_color = (20, 25, 35)
+        
+        # Кэш для цветов вершин (чтобы не пересчитывать каждый кадр)
+        self.vertex_colors_cache = {}
+        self.last_transform_hash = None
     
     def project_point(self, point, view_proj_matrix):
         """Проецирование 3D точки в 2D"""
@@ -44,26 +48,67 @@ class Renderer:
         
         return (x, y)
     
-    def is_face_visible(self, face):
-        """Правильное отсечение нелицевых граней для ортографической проекции"""
+    def is_face_visible(self, face, vertices):
+        """Отсечение нелицевых граней"""
+        if len(face.vertex_indices) < 3:
+            return False
+        
+        # Берем первые три вершины грани
+        v0 = vertices[face.vertex_indices[0]]
+        v1 = vertices[face.vertex_indices[1]]
+        v2 = vertices[face.vertex_indices[2]]
+        
+        # Векторы двух ребер
+        edge1 = np.array([v1.x - v0.x, v1.y - v0.y, v1.z - v0.z])
+        edge2 = np.array([v2.x - v0.x, v2.y - v0.y, v2.z - v0.z])
+        
+        # Векторное произведение дает нормаль к плоскости грани
+        normal = np.cross(edge1, edge2)
+        
+        # Нормализация
+        length = np.linalg.norm(normal)
+        if length > 0:
+            normal = normal / length
+        
         # Для ортографической проекции проверяем Z-компоненту нормали
-        # Если нормаль смотрит от камеры (в нашем случае камера смотрит по -Z),
-        # то грань видима когда нормаль.z < 0
-        return face.normal_z < 0
+        # Камера смотрит по -Z, поэтому грань видима когда normal.z < 0
+        return normal[2] < 0
     
-    def calculate_vertex_colors(self, model, material_color):
-        """Вычисление цветов вершин по модели Ламберта"""
-        vertex_colors = []
+    def calculate_vertex_colors(self, model, material_color, transform_hash):
+        """Вычисление цветов вершин по модели Ламберта с кэшированием"""
+        # Проверяем кэш
+        if transform_hash in self.vertex_colors_cache:
+            vertex_colors, colors_dict = self.vertex_colors_cache[transform_hash]
+            # Восстанавливаем цвета в вершинах
+            for i, vertex in enumerate(model.vertices):
+                if i < len(vertex_colors):
+                    vertex.color = vertex_colors[i]
+            return vertex_colors
+        
         material_color_rgb = (
             material_color[0] / 255.0,
             material_color[1] / 255.0,
             material_color[2] / 255.0
         )
         
-        for vertex in model.vertices:
-            color = self.lambert_shader.calculate_vertex_color(
-                vertex, material_color_rgb
-            )
+        vertex_colors = []
+        colors_dict = {}
+        
+        for i, vertex in enumerate(model.vertices):
+            # Если у вершины нет нормалей, устанавливаем простую
+            if not hasattr(vertex, 'normal_x'):
+                vertex.normal_x = 0
+                vertex.normal_y = 0
+                vertex.normal_z = 1
+            elif not hasattr(vertex, 'normal'):
+                # Нормализуем нормаль
+                normal_len = np.sqrt(vertex.normal_x**2 + vertex.normal_y**2 + vertex.normal_z**2)
+                if normal_len > 0:
+                    vertex.normal_x /= normal_len
+                    vertex.normal_y /= normal_len
+                    vertex.normal_z /= normal_len
+            
+            color = self.lambert_shader.calculate_vertex_color(vertex, material_color_rgb)
             
             # Преобразование в формат Pygame
             vertex_color = (
@@ -71,10 +116,33 @@ class Renderer:
                 int(color[1] * 255),
                 int(color[2] * 255)
             )
+            
+            # Ограничиваем значения
+            vertex_color = (
+                max(0, min(255, vertex_color[0])),
+                max(0, min(255, vertex_color[1])),
+                max(0, min(255, vertex_color[2]))
+            )
+            
             vertex.color = vertex_color
             vertex_colors.append(vertex_color)
+            colors_dict[i] = vertex_color
+        
+        # Сохраняем в кэш
+        self.vertex_colors_cache[transform_hash] = (vertex_colors, colors_dict)
+        self.last_transform_hash = transform_hash
         
         return vertex_colors
+    
+    def get_transform_hash(self, model, camera, base_color_idx):
+        """Создает хэш для текущего состояния преобразований"""
+        # Простой хэш на основе углов, цвета и позиции камеры
+        return hash((
+            id(model),
+            base_color_idx,
+            camera.rotation_x, camera.rotation_y, camera.rotation_z,
+            camera.scale
+        ))
     
     def render_triangle_gouraud(self, screen, v0, v1, v2, p0, p1, p2):
         """Рендеринг треугольника с Гуро шейдингом"""
@@ -87,6 +155,8 @@ class Renderer:
     def next_color(self):
         """Переключение на следующий цвет"""
         self.current_color_idx = (self.current_color_idx + 1) % len(self.colors)
+        # Очищаем кэш при смене цвета
+        self.vertex_colors_cache.clear()
     
     def get_current_color_name(self):
         """Название текущего цвета"""
@@ -110,19 +180,22 @@ class Renderer:
         for vertex in model.vertices:
             projected.append(self.project_point(vertex, view_proj_matrix))
         
-        # Вычисляем цвета вершин по модели Ламберта
+        # Создаем хэш для текущего состояния
+        transform_hash = self.get_transform_hash(model, camera, self.current_color_idx)
+        
+        # Вычисляем цвета вершин по модели Ламберта (с кэшированием)
         base_color = self.colors[self.current_color_idx]
-        vertex_colors = self.calculate_vertex_colors(model, base_color)
+        vertex_colors = self.calculate_vertex_colors(model, base_color, transform_hash)
         
         visible = 0
         hidden = 0
         
         # Рендерим грани
-        for i, face in enumerate(model.faces):
+        for face in model.faces:
             # Отсечение нелицевых граней
             is_visible = True
             if backface_culling:
-                is_visible = self.is_face_visible(face)
+                is_visible = self.is_face_visible(face, model.vertices)
                 if not is_visible:
                     hidden += 1
                     continue
@@ -135,7 +208,8 @@ class Renderer:
             for idx in face.vertex_indices:
                 if 0 <= idx < len(projected):
                     face_points.append(projected[idx])
-                    face_vertices.append(model.vertices[idx])
+                    if idx < len(model.vertices):
+                        face_vertices.append(model.vertices[idx])
             
             if len(face_points) < 3:
                 continue
@@ -143,7 +217,7 @@ class Renderer:
             # Заполнение
             if show_filled and is_visible:
                 if self.use_gouraud and len(face_vertices) >= 3:
-                    # Гуро шейдинг для треугольников
+                    # Гуро шейдинг
                     if len(face_vertices) == 3:
                         self.render_triangle_gouraud(
                             screen, 
@@ -183,17 +257,31 @@ class Renderer:
                 pygame.draw.polygon(screen, line_color, face_points, 1)
             
             # Нормали
-            if show_normals and is_visible:
+            if show_normals and is_visible and len(face.vertex_indices) >= 3:
+                # Вычисляем нормаль грани
+                v0 = model.vertices[face.vertex_indices[0]]
+                v1 = model.vertices[face.vertex_indices[1]]
+                v2 = model.vertices[face.vertex_indices[2]]
+                
+                edge1 = np.array([v1.x - v0.x, v1.y - v0.y, v1.z - v0.z])
+                edge2 = np.array([v2.x - v0.x, v2.y - v0.y, v2.z - v0.z])
+                
+                normal = np.cross(edge1, edge2)
+                length = np.linalg.norm(normal)
+                if length > 0:
+                    normal = normal / length
+                
+                # Центр грани
                 center_x = sum(p[0] for p in face_points) / len(face_points)
                 center_y = sum(p[1] for p in face_points) / len(face_points)
                 
-                scale = 15
-                end_x = center_x + face.normal_x * scale
-                end_y = center_y - face.normal_y * scale  # Отрицательный Y для экранных координат
+                # Отображение нормали
+                scale = 20
+                end_x = center_x + normal[0] * scale
+                end_y = center_y - normal[1] * scale
                 
                 pygame.draw.line(screen, (255, 255, 0), 
                                (center_x, center_y), (end_x, end_y), 2)
-                # Кружок в начале нормали
                 pygame.draw.circle(screen, (255, 200, 0), (int(center_x), int(center_y)), 3)
         
         # Отображение информации об освещении

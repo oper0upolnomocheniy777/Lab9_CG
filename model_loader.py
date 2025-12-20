@@ -5,61 +5,19 @@ from point import Point
 class Face:
     def __init__(self, indices):
         self.vertex_indices = indices
-        self.normal_x = 0
-        self.normal_y = 0
-        self.normal_z = 0
+        self.normal = None  # Нормаль грани будет вычисляться при рендеринге
     
-    def calculate_normal(self, vertices):
-        """Вычисление нормали грани"""
-        if len(self.vertex_indices) < 3:
-            return None
-        
-        # Берем первые три вершины
-        v0 = vertices[self.vertex_indices[0]]
-        v1 = vertices[self.vertex_indices[1]]
-        v2 = vertices[self.vertex_indices[2]]
-        
-        # Векторы двух ребер
-        edge1_x = v1.x - v0.x
-        edge1_y = v1.y - v0.y
-        edge1_z = v1.z - v0.z
-        
-        edge2_x = v2.x - v0.x
-        edge2_y = v2.y - v0.y
-        edge2_z = v2.z - v0.z
-        
-        # Векторное произведение
-        normal_x = edge1_y * edge2_z - edge1_z * edge2_y
-        normal_y = edge1_z * edge2_x - edge1_x * edge2_z
-        normal_z = edge1_x * edge2_y - edge1_y * edge2_x
-        
-        # Нормализация
-        length = np.sqrt(normal_x**2 + normal_y**2 + normal_z**2)
-        if length > 0:
-            normal_x /= length
-            normal_y /= length
-            normal_z /= length
-        
-        self.normal_x = normal_x
-        self.normal_y = normal_y
-        self.normal_z = normal_z
-        
-        return (normal_x, normal_y, normal_z)
+    def __str__(self):
+        return f"Face({self.vertex_indices})"
     
     def __repr__(self):
-        return f"Face({self.vertex_indices})"
+        return self.__str__()
 
 class Model3D:
     def __init__(self, vertices, faces):
         self.vertices = vertices
         self.faces = faces
-        self.calculate_face_normals()
-        self.calculate_vertex_normals()  # Добавляем расчет нормалей вершин
-    
-    def calculate_face_normals(self):
-        """Вычисление нормалей для всех граней"""
-        for face in self.faces:
-            face.calculate_normal(self.vertices)
+        self.calculate_vertex_normals()
     
     def calculate_vertex_normals(self):
         """Вычисление нормалей вершин как среднее нормалей смежных граней"""
@@ -69,14 +27,29 @@ class Model3D:
             vertex.normal_y = 0
             vertex.normal_z = 0
         
-        # Суммируем нормали граней для каждой вершины
+        # Для каждой грани вычисляем нормаль и добавляем к вершинам
         for face in self.faces:
-            for idx in face.vertex_indices:
-                if idx < len(self.vertices):
-                    vertex = self.vertices[idx]
-                    vertex.normal_x += face.normal_x
-                    vertex.normal_y += face.normal_y
-                    vertex.normal_z += face.normal_z
+            if len(face.vertex_indices) >= 3:
+                # Вычисляем нормаль грани
+                v0 = self.vertices[face.vertex_indices[0]]
+                v1 = self.vertices[face.vertex_indices[1]]
+                v2 = self.vertices[face.vertex_indices[2]]
+                
+                edge1 = np.array([v1.x - v0.x, v1.y - v0.y, v1.z - v0.z])
+                edge2 = np.array([v2.x - v0.x, v2.y - v0.y, v2.z - v0.z])
+                
+                normal = np.cross(edge1, edge2)
+                length = np.linalg.norm(normal)
+                
+                if length > 0:
+                    normal = normal / length
+                    
+                    # Добавляем ко всем вершинам грани
+                    for idx in face.vertex_indices:
+                        vertex = self.vertices[idx]
+                        vertex.normal_x += normal[0]
+                        vertex.normal_y += normal[1]
+                        vertex.normal_z += normal[2]
         
         # Нормализуем нормали вершин
         for vertex in self.vertices:
@@ -87,30 +60,17 @@ class Model3D:
                 vertex.normal_z /= length
     
     def apply_transform(self, matrix):
-        """Применение матрицы преобразования с обновлением нормалей"""
-        # Применяем преобразование к вершинам
+        """Применение преобразования к модели"""
         for vertex in self.vertices:
             vertex.transform(matrix)
-        
-        # После преобразования пересчитываем нормали граней и вершин
-        self.recalculate_normals()
+            vertex.transform_normal(matrix)
     
     def recalculate_normals(self):
         """Пересчет нормалей после преобразований"""
-        self.calculate_face_normals()
         self.calculate_vertex_normals()
-    
-    def set_vertex_colors(self, colors):
-        """Установка цветов для вершин"""
-        for i, vertex in enumerate(self.vertices):
-            if i < len(colors):
-                vertex.color = colors[i]
-    
-    def __repr__(self):
-        return f"Model3D(vertices={len(self.vertices)}, faces={len(self.faces)})"
 
 def load_obj(filename):
-    """Загрузка OBJ файла с нормализацией"""
+    """Загрузка OBJ файла"""
     vertices = []
     faces = []
     
@@ -125,21 +85,20 @@ def load_obj(filename):
                 if not parts:
                     continue
                 
-                if parts[0] == 'v':
+                if parts[0] == 'v':  # Вершины
                     if len(parts) >= 4:
                         x = float(parts[1])
                         y = float(parts[2])
                         z = float(parts[3])
                         vertices.append([x, y, z])
                 
-                elif parts[0] == 'f':
+                elif parts[0] == 'f':  # Грани
                     vertex_indices = []
                     for part in parts[1:]:
                         indices = part.split('/')
                         if indices[0]:
                             vertex_idx = int(indices[0]) - 1
-                            if 0 <= vertex_idx:
-                                vertex_indices.append(vertex_idx)
+                            vertex_indices.append(vertex_idx)
                     
                     if len(vertex_indices) >= 3:
                         faces.append(vertex_indices)
@@ -155,9 +114,9 @@ def load_obj(filename):
             # Масштабируем
             max_dist = np.max(np.abs(vertices_array))
             if max_dist > 0:
-                vertices_array = vertices_array / max_dist * 0.6
+                vertices_array = vertices_array / max_dist * 0.7
         
-        # Создаем точки (без нормалей, они вычислятся позже)
+        # Создаем точки
         points = [Point(v[0], v[1], v[2]) for v in vertices_array]
         
         # Создаем грани
@@ -172,8 +131,8 @@ def load_obj(filename):
         return None
 
 def create_cube():
-    """Создание куба с нормалями"""
-    # Создаем вершины без нормалей (они вычислятся автоматически)
+    """Создание куба"""
+    # 8 вершин куба
     vertices = [
         Point(-0.5, -0.5, -0.5),
         Point(0.5, -0.5, -0.5),
@@ -185,15 +144,62 @@ def create_cube():
         Point(-0.5, 0.5, 0.5),
     ]
     
+    # 6 граней (каждая по 4 вершины)
     faces = [
-        Face([0, 3, 2, 1]),  # Задняя
-        Face([4, 5, 6, 7]),  # Передняя
-        Face([0, 4, 7, 3]),  # Левая
-        Face([1, 2, 6, 5]),  # Правая
-        Face([0, 1, 5, 4]),  # Нижняя
-        Face([2, 3, 7, 6]),  # Верхняя
+        [0, 3, 2, 1],  # Задняя грань
+        [4, 5, 6, 7],  # Передняя грань
+        [0, 4, 7, 3],  # Левая грань
+        [1, 2, 6, 5],  # Правая грань
+        [0, 1, 5, 4],  # Нижняя грань
+        [2, 3, 7, 6],  # Верхняя грань
     ]
     
-    model = Model3D(vertices, faces)
+    model_faces = [Face(indices) for indices in faces]
+    model = Model3D(vertices, model_faces)
     print(f"✓ Создан куб: {len(vertices)} вершин, {len(faces)} граней")
+    return model
+
+def create_sphere(segments=16, rings=12):
+    """Создание сферы с правильными нормалями"""
+    vertices = []
+    faces = []
+    
+    # Создаем вершины
+    for i in range(rings + 1):
+        phi = np.pi * i / rings
+        y = np.cos(phi) * 0.5
+        r = np.sin(phi) * 0.5
+        
+        for j in range(segments):
+            theta = 2 * np.pi * j / segments
+            x = r * np.cos(theta)
+            z = r * np.sin(theta)
+            
+            # Нормаль = нормализованный вектор от центра к поверхности
+            # Для сферы нормаль = (x, y, z) * 2 (так как радиус = 0.5)
+            length = np.sqrt(x*x + y*y + z*z)
+            if length > 0:
+                normal_x = x / length
+                normal_y = y / length
+                normal_z = z / length
+            else:
+                normal_x, normal_y, normal_z = 0, 1, 0
+            
+            vertices.append(Point(x, y, z, normal_x, normal_y, normal_z))
+    
+    # Создаем грани
+    for i in range(rings):
+        for j in range(segments):
+            a = i * segments + j
+            b = i * segments + (j + 1) % segments
+            c = (i + 1) * segments + (j + 1) % segments
+            d = (i + 1) * segments + j
+            
+            # Важно: порядок вершин должен быть против часовой стрелки
+            # для правильного вычисления нормали
+            faces.append([a, b, c, d])
+    
+    model_faces = [Face(indices) for indices in faces]
+    model = Model3D(vertices, model_faces)
+    print(f"✓ Создана сфера: {len(vertices)} вершин, {len(faces)} граней")
     return model
