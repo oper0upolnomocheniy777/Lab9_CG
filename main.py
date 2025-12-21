@@ -120,8 +120,6 @@ def main():
         ]
     
     # Состояние нажатых клавиш
-        # Состояние нажатых клавиш
-        # Состояние нажатых клавиш (добавить перед while running)
     keys_pressed = {
         pygame.K_x: False,  # Вращение по X
         pygame.K_y: False,  # Вращение по Y
@@ -132,7 +130,7 @@ def main():
         pygame.K_MINUS: False, # Уменьшить скорость
     }
     
-        # Основные параметры
+    # Основные параметры
     clock = pygame.time.Clock()
     running = True
     
@@ -343,11 +341,8 @@ def main():
                     state['angle_z']
                 )
                 
-                # Применяем преобразование ко всей модели
-                state['current_model'].apply_transform(transform_matrix)
-                
-            # Восстанавливаем и преобразуем вершины
-            for i, vertex in enumerate(state['current_model'].vertices):
+                # Восстанавливаем и преобразуем вершины
+                for i, vertex in enumerate(state['current_model'].vertices):
                     orig = state['original_vertices'][i]
                     vertex.x = orig.x
                     vertex.y = orig.y
@@ -363,7 +358,7 @@ def main():
                     show_wireframe=state['show_wireframe'],
                     show_filled=state['show_filled'],
                     backface_culling=state['backface_culling'],
-                    show_normals=state['show_normals']  # Этот параметр теперь поддерживается
+                    show_normals=state['show_normals']
                 )
                 
                 total_faces = visible + hidden
@@ -389,12 +384,9 @@ def main():
                     'culling': state['backface_culling'],
                     'normals': state['show_normals'],
                     'color': renderer.get_current_color_name(),
-                    'gouraud': renderer.use_gouraud,
+                    'shading_mode': renderer.get_shading_mode_name(),  # Исправлено здесь
                     'light_intensity': renderer.light.intensity,
                     'ambient': renderer.lambert_shader.ambient_intensity,
-                    'light_x': renderer.light.position[0],
-                    'light_y': renderer.light.position[1],
-                    'light_z': renderer.light.position[2],
                 }
                 
                 rot_x, rot_y, rot_z = camera.get_rotation_angles_degrees()

@@ -99,7 +99,7 @@ class UI:
         ]
         
         settings_col3 = [
-            f"Шейдинг: {'Гуро' if settings['gouraud'] else 'Плоский'} (G)",
+            f"Шейдинг: {settings['shading_mode']} (G)",
             f"Интенсивность: {settings['light_intensity']:.1f} (I/K)",
             f"Ambient: {settings['ambient']:.2f} (O/P)",
         ]

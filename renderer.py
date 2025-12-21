@@ -1,7 +1,7 @@
 # renderer.py
 import numpy as np
 import pygame
-from lighting import Light, LambertShader, GouraudShader
+from lighting import Light, LambertShader, GouraudShader, PhongShader
 
 class Renderer:
     def __init__(self, width, height):
@@ -25,9 +25,10 @@ class Renderer:
         self.light = Light(position=[3, 3, 3], color=(1.0, 1.0, 1.0), intensity=0.8)
         self.lambert_shader = LambertShader(self.light, ambient_intensity=0.3)
         self.gouraud_shader = GouraudShader(self.lambert_shader)
+        self.phong_shader = PhongShader(self.lambert_shader)  # Добавляем шейдер Фонга
         
-        # Режимы рендеринга
-        self.use_gouraud = False  # Изначально выключен Гуро шейдинг
+        # Режимы рендеринга (0=Flat, 1=Gouraud, 2=Phong)
+        self.shading_mode = 1  # Изначально Гуро
         self.show_light_info = True
         
         # Фон
@@ -148,6 +149,10 @@ class Renderer:
         """Рендеринг треугольника с Гуро шейдингом"""
         self.gouraud_shader.shade_triangle(screen, v0, v1, v2, p0, p1, p2)
     
+    def render_triangle_phong(self, screen, v0, v1, v2, p0, p1, p2, material_color):
+        """Рендеринг треугольника с Фонг шейдингом"""
+        self.phong_shader.shade_triangle_phong(screen, v0, v1, v2, p0, p1, p2, material_color)
+    
     def render_triangle_flat(self, screen, face_points, color):
         """Рендеринг треугольника с плоским затенением"""
         pygame.draw.polygon(screen, color, face_points)
@@ -165,8 +170,14 @@ class Renderer:
     
     def toggle_shading_mode(self):
         """Переключение режима шейдинга"""
-        self.use_gouraud = not self.use_gouraud
-        return "Гуро" if self.use_gouraud else "Плоский"
+        self.shading_mode = (self.shading_mode + 1) % 3
+        modes = ["Плоский", "Гуро", "Фонг"]
+        return modes[self.shading_mode]
+    
+    def get_shading_mode_name(self):
+        """Получить название текущего режима шейдинга"""
+        modes = ["Плоский", "Гуро", "Фонг"]
+        return modes[self.shading_mode]
     
     def render(self, screen, model, camera, show_wireframe=True, 
                show_filled=True, backface_culling=True, show_normals=False):
@@ -185,6 +196,14 @@ class Renderer:
         
         # Вычисляем цвета вершин по модели Ламберта (с кэшированием)
         base_color = self.colors[self.current_color_idx]
+        
+        # Преобразуем цвет материала в формат для шейдеров (0-1)
+        material_color_rgb = (
+            base_color[0] / 255.0,
+            base_color[1] / 255.0,
+            base_color[2] / 255.0
+        )
+        
         vertex_colors = self.calculate_vertex_colors(model, base_color, transform_hash)
         
         visible = 0
@@ -216,40 +235,63 @@ class Renderer:
             
             # Заполнение
             if show_filled and is_visible:
-                if self.use_gouraud and len(face_vertices) >= 3:
-                    # Гуро шейдинг
-                    if len(face_vertices) == 3:
-                        self.render_triangle_gouraud(
-                            screen, 
-                            face_vertices[0], face_vertices[1], face_vertices[2],
-                            face_points[0], face_points[1], face_points[2]
-                        )
-                    elif len(face_vertices) == 4:
-                        # Разбиваем четырехугольник на два треугольника
-                        self.render_triangle_gouraud(
-                            screen,
-                            face_vertices[0], face_vertices[1], face_vertices[2],
-                            face_points[0], face_points[1], face_points[2]
-                        )
-                        self.render_triangle_gouraud(
-                            screen,
-                            face_vertices[0], face_vertices[2], face_vertices[3],
-                            face_points[0], face_points[2], face_points[3]
-                        )
-                else:
-                    # Плоское затенение - средний цвет вершин грани
-                    face_vertex_colors = []
-                    for idx in face.vertex_indices:
-                        if idx < len(vertex_colors):
-                            face_vertex_colors.append(vertex_colors[idx])
+                if len(face_vertices) >= 3:
+                    if self.shading_mode == 0:  # Flat shading
+                        face_vertex_colors = []
+                        for idx in face.vertex_indices:
+                            if idx < len(vertex_colors):
+                                face_vertex_colors.append(vertex_colors[idx])
+                        
+                        if face_vertex_colors:
+                            avg_color = (
+                                sum(c[0] for c in face_vertex_colors) // len(face_vertex_colors),
+                                sum(c[1] for c in face_vertex_colors) // len(face_vertex_colors),
+                                sum(c[2] for c in face_vertex_colors) // len(face_vertex_colors)
+                            )
+                            self.render_triangle_flat(screen, face_points, avg_color)
                     
-                    if face_vertex_colors:
-                        avg_color = (
-                            sum(c[0] for c in face_vertex_colors) // len(face_vertex_colors),
-                            sum(c[1] for c in face_vertex_colors) // len(face_vertex_colors),
-                            sum(c[2] for c in face_vertex_colors) // len(face_vertex_colors)
-                        )
-                        self.render_triangle_flat(screen, face_points, avg_color)
+                    elif self.shading_mode == 1:  # Gouraud shading
+                        if len(face_vertices) == 3:
+                            self.render_triangle_gouraud(
+                                screen, 
+                                face_vertices[0], face_vertices[1], face_vertices[2],
+                                face_points[0], face_points[1], face_points[2]
+                            )
+                        elif len(face_vertices) == 4:
+                            # Разбиваем четырехугольник на два треугольника
+                            self.render_triangle_gouraud(
+                                screen,
+                                face_vertices[0], face_vertices[1], face_vertices[2],
+                                face_points[0], face_points[1], face_points[2]
+                            )
+                            self.render_triangle_gouraud(
+                                screen,
+                                face_vertices[0], face_vertices[2], face_vertices[3],
+                                face_points[0], face_points[2], face_points[3]
+                            )
+                    
+                    elif self.shading_mode == 2:  # Phong shading
+                        if len(face_vertices) == 3:
+                            self.render_triangle_phong(
+                                screen, 
+                                face_vertices[0], face_vertices[1], face_vertices[2],
+                                face_points[0], face_points[1], face_points[2],
+                                material_color_rgb
+                            )
+                        elif len(face_vertices) == 4:
+                            # Разбиваем четырехугольник на два треугольника
+                            self.render_triangle_phong(
+                                screen,
+                                face_vertices[0], face_vertices[1], face_vertices[2],
+                                face_points[0], face_points[1], face_points[2],
+                                material_color_rgb
+                            )
+                            self.render_triangle_phong(
+                                screen,
+                                face_vertices[0], face_vertices[2], face_vertices[3],
+                                face_points[0], face_points[2], face_points[3],
+                                material_color_rgb
+                            )
             
             # Каркас
             if show_wireframe:
@@ -295,7 +337,7 @@ class Renderer:
         font = pygame.font.Font(None, 24)
         
         info_lines = [
-            f"Режим шейдинга: {'Гуро' if self.use_gouraud else 'Плоский'} (G)",
+            f"Режим шейдинга: {self.get_shading_mode_name()} (G)",
             f"Источник света: ({self.light.position[0]:.1f}, {self.light.position[1]:.1f}, {self.light.position[2]:.1f})",
             f"Интенсивность: {self.light.intensity:.1f}",
             f"Ambient: {self.lambert_shader.ambient_intensity:.1f}",
